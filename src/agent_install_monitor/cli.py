@@ -46,34 +46,30 @@ def _format_duration(started_at: str, last_seen_at: str) -> str:
     return f"{secs}s"
 
 
-def _mark(success: bool) -> str:
-    return "✓" if success else "✗"
-
-
-def _format_item(event: db.Event) -> str:
-    mark = _mark(event.success)
+def _format_item(index: int, event: db.Event) -> str:
+    fail = "" if event.success else " (failed)"
     if event.category == "package_manager":
         name = event.name or "?"
         version = f":{event.version}" if event.version else ""
-        return f"  {mark} {event.manager or '?':<8} {name}{version}"
+        return f"  {index}. {event.manager or '?':<8} {name}{version}{fail}"
     if event.category == "container":
         name = event.name or "?"
         version = f":{event.version}" if event.version else ""
         suffix = "" if event.action == "pull" else f" ({event.action})"
-        return f"  {mark} {name}{version}{suffix}"
+        return f"  {index}. {name}{version}{suffix}{fail}"
     if event.category == "git":
-        return f"  {mark} {event.name or '?'}"
+        return f"  {index}. {event.name or '?'}{fail}"
     if event.category == "runtime":
         name = event.name or "?"
         version = f"@{event.version}" if event.version else ""
-        return f"  {mark} {event.manager or '?'} {name}{version}"
+        return f"  {index}. {event.manager or '?'} {name}{version}{fail}"
     if event.category == "service":
-        return f"  {mark} {event.name or '?'} started"
+        return f"  {index}. {event.name or '?'} started{fail}"
     if event.category == "database":
-        return f"  {mark} {event.name or '?'} created"
+        return f"  {index}. {event.name or '?'} created{fail}"
     if event.category == "download":
-        return f"  {mark} {event.name or '?'}"
-    return f"  {mark} {event.name or event.command}"
+        return f"  {index}. {event.name or '?'}{fail}"
+    return f"  {index}. {event.name or event.command}{fail}"
 
 
 def _render_session(session_id: str) -> str:
@@ -93,8 +89,8 @@ def _render_session(session_id: str) -> str:
         if not items:
             continue
         lines.append(label)
-        for event in items:
-            lines.append(_format_item(event))
+        for i, event in enumerate(items, start=1):
+            lines.append(_format_item(i, event))
 
     directories = sorted({e.cwd for e in events if e.cwd})
     if directories:
