@@ -13,7 +13,7 @@ authors = [{ name = "agent-install-monitor contributors" }]
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/<OWNER>/agent-install-monitor"
+Homepage = "https://github.com/swytchcodehq/agent-install-monitor"
 
 [project.entry-points."hermes_agent.plugins"]
 agent-monitor = "agent_install_monitor"

@@ -13,10 +13,10 @@ plugin, and offers to put `agent-monitor` on your `$PATH`. Safe to re-run.
 
 ```bash
 # macOS / Linux / WSL
-curl -fsSL https://raw.githubusercontent.com/<OWNER>/agent-install-monitor/main/install.py | python3
+curl -fsSL https://raw.githubusercontent.com/swytchcodehq/agent-install-monitor/main/install.py | python3
 
 # Windows (PowerShell)
-irm https://raw.githubusercontent.com/<OWNER>/agent-install-monitor/main/install.py | python -
+irm https://raw.githubusercontent.com/swytchcodehq/agent-install-monitor/main/install.py | python -
 ```
 
 <details>
