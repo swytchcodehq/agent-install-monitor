@@ -49,11 +49,14 @@ Run the installer — it finds Hermes's own venv, installs into it (not your
 shell's Python, which wouldn't be discoverable as a plugin), enables the
 plugin, and offers to put `agent-monitor` on your `$PATH`. Safe to re-run.
 
-```bash
-# macOS / Linux / WSL
-curl -fsSL https://raw.githubusercontent.com/swytchcodehq/agent-install-monitor/main/install.py | python3
+### macOS / Linux / WSL
 
-# Windows (PowerShell)
+```
+curl -fsSL https://raw.githubusercontent.com/swytchcodehq/agent-install-monitor/main/install.py | python3
+```
+
+### Windows (PowerShell)
+```
 irm https://raw.githubusercontent.com/swytchcodehq/agent-install-monitor/main/install.py | python -
 ```
 
