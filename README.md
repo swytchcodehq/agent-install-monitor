@@ -138,10 +138,3 @@ pip install -e ".[dev]"
 pytest
 ```
 
-### Releasing
-
-**Merging a PR to `main` automatically publishes a new patch release to
-PyPI** — CI bumps the version, tags it, and runs the release workflow with no
-manual step. For a deliberate minor/major bump instead, run the **"Bump
-version"** workflow from the Actions tab and pick `minor`/`major` before
-merging.
