@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-install-monitor"
+version = "0.1.0"
+description = "Agent Install Monitor — visibility into everything your Hermes agent installs and touches on your machine"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "agent-install-monitor contributors" }]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/<OWNER>/agent-install-monitor"
+
+[project.entry-points."hermes_agent.plugins"]
+agent-monitor = "agent_install_monitor"
+
+[project.scripts]
+agent-monitor = "agent_install_monitor.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
