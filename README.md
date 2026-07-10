@@ -13,7 +13,7 @@ repositories, services, and other environment changes made by
 
 - ✅ Works with Hermes
 - 🔜 Planned: Claude Code, OpenClaw, and more
-- 🔒 Local-first — nothing leaves your machine
+- 🔒 Local-first - nothing leaves your machine
 
 ```
 $ agent-monitor history
@@ -40,12 +40,12 @@ to lose track:
 Agent Install Monitor keeps a local history of everything your AI agent
 installed, so you can always answer those questions.
 
-It's an observability tool, not a control layer — it does **not** modify
+It's an observability tool, not a control layer - it does **not** modify
 execution, uninstall packages, or perform rollback.
 
 ## Installation
 
-Run the installer — it finds Hermes's own venv, installs into it (not your
+Run the installer - it finds Hermes's own venv, installs into it (not your
 shell's Python, which wouldn't be discoverable as a plugin), enables the
 plugin, and offers to put `agent-monitor` on your `$PATH`. Safe to re-run.
 
@@ -64,10 +64,10 @@ irm https://raw.githubusercontent.com/swytchcodehq/agent-install-monitor/main/in
 <summary>Manual install (if you'd rather not pipe a script into your shell)</summary>
 
 Install into the **same Python environment `hermes` runs in**, not your
-system/shell Python — that's what makes it discoverable as a plugin.
+system/shell Python - that's what makes it discoverable as a plugin.
 
 ```bash
-# find hermes's project root — the venv lives at <that path>/venv
+# find hermes's project root - the venv lives at <that path>/venv
 hermes --version        # look for the "Project:" or "Install directory:" line
                          # (the label has changed across Hermes versions)
 
@@ -76,7 +76,7 @@ hermes --version        # look for the "Project:" or "Install directory:" line
 ```
 
 `which hermes` usually points at a wrapper script (from the standard
-installer), not a symlink — `readlink -f` won't resolve it to the venv, so
+installer), not a symlink - `readlink -f` won't resolve it to the venv, so
 use `hermes --version`'s output instead.
 
 Enable the plugin:
@@ -94,7 +94,7 @@ hermes plugins enable agent-monitor
 >     - agent-monitor
 > ```
 
-Optional — put the CLI on your `$PATH`:
+Optional - put the CLI on your `$PATH`:
 
 ```bash
 export PATH="/path/from/above/venv/bin:$PATH"
