@@ -28,7 +28,7 @@ PLUGIN_NAME = "agent-monitor"
 
 
 def _fail(msg: str) -> None:
-    print(f"✗ {msg}", file=sys.stderr)
+    print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(1)
 
 
@@ -102,7 +102,7 @@ def enable_plugin() -> None:
             f"    ({result.stderr.strip() or result.stdout.strip()})"
         )
         return
-    print(f"  ✓ {PLUGIN_NAME} enabled")
+    print(f"  OK: {PLUGIN_NAME} enabled")
 
 
 # ---------------------------------------------------------------------------
@@ -139,8 +139,18 @@ def _guess_shell_rc() -> Optional[Path]:
 
 def _offer_path_unix(bin_dir: Path) -> None:
     line = f'export PATH="{bin_dir}:$PATH"'
-    print(f"\n`{PLUGIN_NAME}` isn't on your PATH yet.")
     rc = _guess_shell_rc()
+
+    # `shutil.which` alone isn't enough here: it reflects the *current*
+    # shell's PATH, which can already resolve the CLI from a one-off
+    # `export` earlier in this session without that surviving a new
+    # terminal. Check the rc file's actual contents instead -- that's what
+    # determines whether this persists.
+    if rc is not None and rc.exists() and str(bin_dir) in rc.read_text():
+        print(f"OK: `{PLUGIN_NAME}` is already set up on PATH in {rc}.")
+        return
+
+    print(f"\n`{PLUGIN_NAME}` isn't set up on your PATH permanently yet.")
     if rc is None:
         print(f"  Add this line to your shell's rc file:\n  {line}")
         return
@@ -149,11 +159,29 @@ def _offer_path_unix(bin_dir: Path) -> None:
         return
     with rc.open("a") as f:
         f.write(f"\n# added by the agent-install-monitor installer\n{line}\n")
-    print(f"  ✓ appended to {rc} -- restart your shell, or run: source {rc}")
+    print(f"  OK: appended to {rc} -- restart your shell, or run: source {rc}")
+
+
+def _windows_user_path_contains(bin_dir: Path) -> bool:
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "[Environment]::GetEnvironmentVariable('Path', 'User')"],
+            capture_output=True, text=True, check=True,
+        )
+    except Exception:
+        return False
+    return str(bin_dir).lower() in result.stdout.lower()
 
 
 def _offer_path_windows(bin_dir: Path) -> None:
-    print(f"\n`{PLUGIN_NAME}` isn't on your PATH yet.")
+    # Same reasoning as _offer_path_unix: check the persisted User PATH in
+    # the registry, not just whether the CLI resolves in this process.
+    if _windows_user_path_contains(bin_dir):
+        print(f"OK: `{PLUGIN_NAME}` is already set up on your User PATH.")
+        return
+
+    print(f"\n`{PLUGIN_NAME}` isn't set up on your PATH permanently yet.")
     if not _prompt_yes("  Add it to your user PATH permanently?"):
         print(
             "  Skipped. Add manually via System Properties > Environment "
@@ -170,15 +198,12 @@ def _offer_path_windows(bin_dir: Path) -> None:
     )
     try:
         _run(["powershell", "-NoProfile", "-Command", ps_cmd])
-        print("  ✓ added to your User PATH -- restart your terminal for it to take effect.")
+        print("  OK: added to your User PATH -- restart your terminal for it to take effect.")
     except Exception as exc:
         print(f"  Couldn't update PATH automatically ({exc}). Add manually:\n  {bin_dir}")
 
 
 def offer_path_setup(venv: Path) -> None:
-    if shutil.which(PLUGIN_NAME):
-        print(f"✓ `{PLUGIN_NAME}` is already on PATH.")
-        return
     bin_dir = venv_bin(venv)
     cli = bin_dir / (f"{PLUGIN_NAME}.exe" if os.name == "nt" else PLUGIN_NAME)
     if not cli.exists():
@@ -192,18 +217,18 @@ def offer_path_setup(venv: Path) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    print("Agent Install Monitor — installer")
-    print("────────────────────────────────────")
+    print("Agent Install Monitor - installer")
+    print("-" * 36)
 
-    print("→ Locating Hermes Agent...")
+    print("-> Locating Hermes Agent...")
     venv = find_hermes_venv()
-    print(f"  ✓ found venv: {venv}")
+    print(f"  OK: found venv: {venv}")
 
-    print(f"→ Installing {PACKAGE} into that venv...")
+    print(f"-> Installing {PACKAGE} into that venv...")
     pip_install(venv)
-    print("  ✓ installed")
+    print("  OK: installed")
 
-    print("→ Enabling plugin...")
+    print("-> Enabling plugin...")
     enable_plugin()
 
     offer_path_setup(venv)

@@ -1,0 +1,48 @@
+name: Release on merge
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+# Shares its group with bump-version.yml so a manual minor/major bump and an
+# automatic patch bump can never race against each other.
+concurrency: release
+
+jobs:
+  bump-and-tag:
+    # Guard against the infinite loop this workflow would otherwise cause:
+    # its own "chore: bump version to ..." commit is itself a push to main,
+    # which would re-trigger this workflow, which would bump again, forever.
+    # This also correctly no-ops when bump-version.yml's manual bump lands
+    # on main -- that push already carries the same commit prefix, and its
+    # own tag push already drives release.yml independently, so nothing
+    # extra needs to happen here for it.
+    if: "!startsWith(github.event.head_commit.message, 'chore: bump version to')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # bump_version.py writes `version=X.Y.Z` to $GITHUB_OUTPUT itself, so
+      # it's available below as steps.bump.outputs.version.
+      - name: Bump patch version
+        id: bump
+        run: python3 scripts/bump_version.py patch
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}"
+          git tag "v${{ steps.bump.outputs.version }}"
+          git push origin HEAD:main
+          git push origin "v${{ steps.bump.outputs.version }}"
