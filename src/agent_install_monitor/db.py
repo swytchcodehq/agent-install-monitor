@@ -93,10 +93,42 @@ def get_db_path() -> Path:
     return get_home_dir() / "agent-monitor" / "monitor.db"
 
 
+def _ensure_private(path: Path) -> None:
+    """Create the folder and database so only this account can open them.
+
+    The history stores full commands, which can include a token (an install
+    URL with credentials, say). On macOS and Linux the folder is 700 and the
+    file 600, including for databases made by older versions. Windows keeps
+    its own per-user permissions on the profile folder.
+    """
+    folder = path.parent
+    created = not folder.exists()
+    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if os.name == "nt":
+        return
+    if not path.exists():
+        os.close(os.open(str(path), os.O_CREAT | os.O_WRONLY, 0o600))
+    # Only lock the folder if it's ours: one we just made, or the plugin's
+    # own agent-monitor folder. A database placed in a shared folder leaves
+    # that folder alone.
+    targets = [(path, 0o600)]
+    if created or folder.name == "agent-monitor":
+        targets.append((folder, 0o700))
+    for target, mode in targets:
+        try:
+            if target.stat().st_mode & 0o777 != mode:
+                os.chmod(str(target), mode)
+        except OSError:
+            # Fine if it's already private (say, owned by another account
+            # but not open to others). Stop if it's still open to others.
+            if target == path and path.stat().st_mode & 0o077:
+                raise
+
+
 @contextmanager
 def _connect(db_path: Optional[Path] = None) -> Iterator[sqlite3.Connection]:
     path = db_path or get_db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_private(path)
     conn = sqlite3.connect(str(path))
     conn.row_factory = sqlite3.Row
     try:

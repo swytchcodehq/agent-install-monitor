@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
-"""Bump the `version` field in pyproject.toml.
+"""Bump the `version` field in pyproject.toml, and the copies of it.
+
+The version also lives in the package (`__version__`) and in install.py
+(`VERSION`, which picks the release to install from PyPI or GitHub). All three
+are updated together so they can't drift apart.
 
 Usage: python3 scripts/bump_version.py {major,minor,patch}
+
+Run it in your PR. When the PR is merged, release-on-merge.yml tags the new
+version and starts release.yml, which publishes to PyPI and GitHub.
 
 Prints the new version to stdout. If run inside GitHub Actions ($GITHUB_OUTPUT
 is set), also writes `version=X.Y.Z` there so a workflow step can reference it
@@ -15,11 +22,25 @@ import re
 import sys
 from pathlib import Path
 
-_PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
+_ROOT = Path(__file__).resolve().parent.parent
+_PYPROJECT = _ROOT / "pyproject.toml"
 _VERSION_RE = re.compile(r'(?m)^version = "(\d+)\.(\d+)\.(\d+)"$')
+# Other files holding the version, and the line that holds it.
+_COPIES = [
+    (_ROOT / "src" / "agent_install_monitor" / "__init__.py", re.compile(r'(?m)^__version__ = "[^"]*"$'), '__version__ = "{}"'),
+    (_ROOT / "install.py", re.compile(r'(?m)^VERSION = "[^"]*"$'), 'VERSION = "{}"'),
+]
 
 
-def bump(part: str, pyproject_path: Path = _PYPROJECT) -> str:
+def write_copies(version: str, copies=None) -> None:
+    for path, pattern, line in (_COPIES if copies is None else copies):
+        text = path.read_text()
+        if not pattern.search(text):
+            raise SystemExit(f"no version line found in {path}")
+        path.write_text(pattern.sub(line.format(version), text, count=1))
+
+
+def bump(part: str, pyproject_path: Path = _PYPROJECT, copies=None) -> str:
     text = pyproject_path.read_text()
     match = _VERSION_RE.search(text)
     if not match:
@@ -38,6 +59,8 @@ def bump(part: str, pyproject_path: Path = _PYPROJECT) -> str:
     new_version = f"{major}.{minor}.{patch}"
     new_text = text[: match.start()] + f'version = "{new_version}"' + text[match.end() :]
     pyproject_path.write_text(new_text)
+    if copies is not None or pyproject_path == _PYPROJECT:
+        write_copies(new_version, copies)
     return new_version
 
 

@@ -11,9 +11,9 @@ Agent Install Monitor records package installs, Docker images, Git
 repositories, services, and other environment changes made by
 [Hermes Agent](https://github.com/NousResearch/hermes-agent).
 
-- ✅ Works with Hermes
-- 🔜 Planned: Claude Code, OpenClaw, and more
-- 🔒 Local-first - nothing leaves your machine
+- Works with Hermes
+- Planned: Claude Code, OpenClaw, and more
+- Local-first: nothing leaves your machine
 
 ```
 $ agent-monitor history
@@ -40,14 +40,18 @@ to lose track:
 Agent Install Monitor keeps a local history of everything your AI agent
 installed, so you can always answer those questions.
 
-It's an observability tool, not a control layer - it does **not** modify
+It's an observability tool, not a control layer It does **not** modify
 execution, uninstall packages, or perform rollback.
 
 ## Installation
 
-Run the installer - it finds Hermes's own venv, installs into it (not your
+Run the installer. It finds Hermes's own venv, installs into it (not your
 shell's Python, which wouldn't be discoverable as a plugin), enables the
 plugin, and offers to put `agent-monitor` on your `$PATH`. Safe to re-run.
+
+It installs from PyPI, and falls back to the same version from the GitHub
+release if PyPI isn't available. To pick one, add `--source pypi` or
+`--source github` (for example `... | python3 - --source github`).
 
 ### macOS / Linux / WSL
 
@@ -71,8 +75,11 @@ system/shell Python - that's what makes it discoverable as a plugin.
 hermes --version        # look for the "Project:" or "Install directory:" line
                          # (the label has changed across Hermes versions)
 
-# install into that venv's pip (not your shell's pip)
+# install into that venv's pip (not your shell's pip), from PyPI:
 /path/from/above/venv/bin/pip install agent-install-monitor
+
+# or from GitHub (replace 0.1.2 with the latest release):
+/path/from/above/venv/bin/pip install https://github.com/swytchcodehq/agent-install-monitor/archive/refs/tags/v0.1.2.tar.gz
 ```
 
 `which hermes` usually points at a wrapper script (from the standard
@@ -115,7 +122,10 @@ agent-monitor export [--session ID] [--format json|csv]
 
 
 Data lives in `$HERMES_HOME/agent-monitor/monitor.db` (default
-`~/.hermes/agent-monitor/monitor.db`). Nothing leaves your machine.
+`~/.hermes/agent-monitor/monitor.db`). Nothing leaves your machine. On macOS
+and Linux the folder and database can only be opened by your own account.
+Tokens in a command (an install URL with credentials, `TOKEN=...`,
+`--password ...`) are replaced with `***` before it's saved.
 
 ## Supported Installations
 
@@ -137,4 +147,19 @@ Detection is a best-effort command-string match, not a security boundary.
 pip install -e ".[dev]"
 pytest
 ```
+
+### Releasing
+
+Bump the version in your PR:
+
+```bash
+python3 scripts/bump_version.py patch   # or minor, major
+```
+
+This updates `pyproject.toml`, `__version__` and the installer's `VERSION`
+together. When the PR is merged, `release-on-merge.yml` tags the new version
+and starts `release.yml`, which runs the tests, publishes to PyPI and creates
+the GitHub release with the built files. A merge that doesn't change the
+version releases nothing. To retry a release, run `release.yml` by hand on
+the tag.
 
