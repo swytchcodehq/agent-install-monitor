@@ -7,14 +7,19 @@ enables the plugin, and offers to put the `agent-monitor` CLI on PATH.
 
 Safe to re-run: every step is idempotent.
 
+Installs from PyPI. If PyPI can't be reached or doesn't have the package,
+it installs the same version from the GitHub release instead.
+
 Usage:
     macOS/Linux/WSL:  curl -fsSL <raw-url>/install.py | python3
     Windows:          irm <raw-url>/install.py | python -
     Local:            python3 install.py
+    Pick the source:  ... | python3 - --source github     (or pypi, or auto)
 """
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import shutil
@@ -25,6 +30,14 @@ from typing import List, Optional
 
 PACKAGE = "agent-install-monitor"
 PLUGIN_NAME = "agent-monitor"
+REPO = "swytchcodehq/agent-install-monitor"
+# Kept in step with pyproject.toml by scripts/bump_version.py.
+VERSION = "0.1.2"
+
+
+def github_url(version: str = VERSION) -> str:
+    """The source archive of a release tag. pip builds it; no git needed."""
+    return f"https://github.com/{REPO}/archive/refs/tags/v{version}.tar.gz"
 
 
 def _fail(msg: str) -> None:
@@ -83,8 +96,28 @@ def venv_python(venv: Path) -> Path:
 # Step 2: install + enable
 # ---------------------------------------------------------------------------
 
-def pip_install(venv: Path) -> None:
-    _run([str(venv_python(venv)), "-m", "pip", "install", "--quiet", "--upgrade", PACKAGE])
+def _pip(venv: Path, spec: str) -> None:
+    _run([str(venv_python(venv)), "-m", "pip", "install", "--quiet", "--upgrade", spec])
+
+
+def pip_install(venv: Path, source: str = "auto") -> str:
+    """Install the plugin into *venv*. Returns where it came from.
+
+    ``auto`` tries PyPI first and falls back to the GitHub release of the
+    same version, so a PyPI outage (or a release that hasn't reached PyPI
+    yet) doesn't stop the install.
+    """
+    if source in ("auto", "pypi"):
+        try:
+            _pip(venv, f"{PACKAGE}=={VERSION}")
+            return "PyPI"
+        except subprocess.CalledProcessError:
+            if source == "pypi":
+                _fail(f"couldn't install {PACKAGE} {VERSION} from PyPI. "
+                      "Try again with `--source github`.")
+            print("  ! Not available from PyPI, installing from GitHub instead...")
+    _pip(venv, github_url())
+    return "GitHub"
 
 
 def enable_plugin() -> None:
@@ -216,7 +249,12 @@ def offer_path_setup(venv: Path) -> None:
 
 # ---------------------------------------------------------------------------
 
-def main() -> int:
+def main(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description="Install Agent Install Monitor into Hermes.")
+    parser.add_argument("--source", choices=["auto", "pypi", "github"], default="auto",
+                        help="where to install from (default: PyPI, falling back to GitHub)")
+    args = parser.parse_args(argv)
+
     print("Agent Install Monitor - installer")
     print("-" * 36)
 
@@ -224,9 +262,9 @@ def main() -> int:
     venv = find_hermes_venv()
     print(f"  OK: found venv: {venv}")
 
-    print(f"-> Installing {PACKAGE} into that venv...")
-    pip_install(venv)
-    print("  OK: installed")
+    print(f"-> Installing {PACKAGE} {VERSION} into that venv...")
+    origin = pip_install(venv, args.source)
+    print(f"  OK: installed from {origin}")
 
     print("-> Enabling plugin...")
     enable_plugin()

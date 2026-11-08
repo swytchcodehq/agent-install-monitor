@@ -93,10 +93,31 @@ def get_db_path() -> Path:
     return get_home_dir() / "agent-monitor" / "monitor.db"
 
 
+def _ensure_private(path: Path) -> None:
+    """Create the folder and database so only this account can open them.
+
+    The history stores full commands, which can include a token (an install
+    URL with credentials, say). On macOS and Linux the folder is 700 and the
+    file 600, including for databases made by older versions. Windows keeps
+    its own per-user permissions on the profile folder.
+    """
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if os.name == "nt":
+        return
+    if not path.exists():
+        os.close(os.open(str(path), os.O_CREAT | os.O_WRONLY, 0o600))
+    for target, mode in ((path.parent, 0o700), (path, 0o600)):
+        try:
+            if target.stat().st_mode & 0o777 != mode:
+                os.chmod(str(target), mode)
+        except OSError:
+            pass
+
+
 @contextmanager
 def _connect(db_path: Optional[Path] = None) -> Iterator[sqlite3.Connection]:
     path = db_path or get_db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_private(path)
     conn = sqlite3.connect(str(path))
     conn.row_factory = sqlite3.Row
     try:

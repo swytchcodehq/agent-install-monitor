@@ -179,3 +179,32 @@ def test_migration_adds_agent_column_without_losing_existing_data(tmp_path):
         success=True, db_path=db_path,
     )
     assert db.get_session("legacy-sess", db_path=db_path).event_count == 2
+
+
+import os
+import stat
+
+import pytest
+
+posix_only = pytest.mark.skipif(os.name == "nt", reason="file modes are only checked on macOS and Linux")
+
+
+@posix_only
+def test_new_history_is_private(tmp_path):
+    db_path = tmp_path / "agent-monitor" / "monitor.db"
+    _record(db_path)
+    assert stat.S_IMODE(db_path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(db_path.parent.stat().st_mode) == 0o700
+
+
+@posix_only
+def test_history_from_older_version_is_locked(tmp_path):
+    folder = tmp_path / "agent-monitor"
+    folder.mkdir(mode=0o755)
+    db_path = folder / "monitor.db"
+    _record(db_path)
+    os.chmod(str(db_path), 0o644)
+    os.chmod(str(folder), 0o755)
+    _record(db_path, name="left-pad")
+    assert stat.S_IMODE(db_path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(folder.stat().st_mode) == 0o700

@@ -14,10 +14,11 @@ from typing import Any, Dict, Optional
 
 from . import db
 from .detector import detect
+from .redact import redact
 
 logger = logging.getLogger(__name__)
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 
 
 def _extract_exit_code(result: Any) -> Optional[int]:
@@ -64,9 +65,9 @@ def _on_post_tool_call(
                 category=event.category,
                 manager=event.manager,
                 action=event.action,
-                name=event.name,
+                name=redact(event.name),
                 version=event.version,
-                command=event.command,
+                command=redact(event.command),
                 cwd=cwd if isinstance(cwd, str) else None,
                 exit_code=exit_code,
                 success=(exit_code == 0),

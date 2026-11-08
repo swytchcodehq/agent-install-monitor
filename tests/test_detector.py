@@ -201,3 +201,18 @@ def test_empty_and_none_command():
 def test_unrelated_command_not_detected():
     assert detect("ls -la /tmp") == []
     assert detect("echo hello world") == []
+
+
+def test_settings_before_the_command_are_skipped():
+    events = detect("NPM_TOKEN=x npm install lodash")
+    assert [(e.manager, e.name) for e in events] == [("npm", "lodash")]
+
+
+def test_sudo_and_env_are_skipped():
+    assert [(e.manager, e.name) for e in detect("sudo apt install -y himalaya")] == [("apt", "himalaya")]
+    assert [(e.manager, e.name) for e in detect("sudo -E -u deploy pip install requests")] == [("pip", "requests")]
+    assert [(e.manager, e.name) for e in detect("env PIP_NO_CACHE_DIR=1 pip install rich")] == [("pip", "rich")]
+
+
+def test_plain_settings_alone_are_not_installs():
+    assert detect("FOO=1 BAR=2") == []

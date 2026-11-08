@@ -56,3 +56,19 @@ def test_only_touches_version_line(tmp_path):
     text = path.read_text()
     assert 'version = "1.2.4"' in text
     assert 'description = "has version in it too"' in text
+
+
+def test_updates_the_copies_too(tmp_path):
+    import re
+    path = _write_pyproject(tmp_path, "1.2.3")
+    init = tmp_path / "__init__.py"
+    init.write_text('"""x"""\n__version__ = "1.2.3"\n')
+    installer = tmp_path / "install.py"
+    installer.write_text('PACKAGE = "x"\nVERSION = "1.2.3"\n')
+    copies = [
+        (init, re.compile(r'(?m)^__version__ = "[^"]*"$'), '__version__ = "{}"'),
+        (installer, re.compile(r'(?m)^VERSION = "[^"]*"$'), 'VERSION = "{}"'),
+    ]
+    assert bump("minor", path, copies) == "1.3.0"
+    assert '__version__ = "1.3.0"' in init.read_text()
+    assert 'VERSION = "1.3.0"' in installer.read_text()

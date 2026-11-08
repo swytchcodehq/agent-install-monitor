@@ -298,6 +298,24 @@ _CATEGORY_MATCHERS: List[Callable[[List[str], str], Optional[List[DetectedEvent]
 ]
 
 
+_ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _strip_prefix(tokens: List[str]) -> List[str]:
+    """Drop leading ``NAME=value`` settings and ``env``/``sudo`` wrappers."""
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if _ENV_ASSIGN_RE.match(tok) or tok in ("env", "sudo"):
+            i += 1
+        elif "sudo" in tokens[:i] and tok.startswith("-"):
+            # sudo -E, sudo -H; -u and -g take a value (sudo -u deploy ...)
+            i += 2 if tok in ("-u", "-g") else 1
+        else:
+            break
+    return tokens[i:]
+
+
 def detect(command: str) -> List[DetectedEvent]:
     """Return every install/integration event found in *command*."""
     if not command or not isinstance(command, str):
@@ -306,6 +324,9 @@ def detect(command: str) -> List[DetectedEvent]:
     events: List[DetectedEvent] = []
     for tokens in _split_segments(command):
         seg_command = " ".join(tokens)
+        # `NPM_TOKEN=x npm install ...`, `env FOO=1 pip install ...`,
+        # `sudo apt install ...`: match on the command after the prefix.
+        tokens = _strip_prefix(tokens)
         for matcher in _CATEGORY_MATCHERS:
             result = matcher(tokens, seg_command)
             if result is not None:
