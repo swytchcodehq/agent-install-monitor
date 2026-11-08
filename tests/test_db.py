@@ -208,3 +208,40 @@ def test_history_from_older_version_is_locked(tmp_path):
     _record(db_path, name="left-pad")
     assert stat.S_IMODE(db_path.stat().st_mode) == 0o600
     assert stat.S_IMODE(folder.stat().st_mode) == 0o700
+
+
+@posix_only
+def test_shared_folder_is_left_alone(tmp_path):
+    shared = tmp_path / "shared"
+    shared.mkdir(mode=0o755)
+    os.chmod(str(shared), 0o755)
+    db_path = shared / "monitor.db"
+    _record(db_path)
+    assert stat.S_IMODE(shared.stat().st_mode) == 0o755
+    assert stat.S_IMODE(db_path.stat().st_mode) == 0o600
+
+
+@posix_only
+def test_stops_if_history_cant_be_made_private(tmp_path, monkeypatch):
+    db_path = tmp_path / "agent-monitor" / "monitor.db"
+    _record(db_path)
+    os.chmod(str(db_path), 0o644)
+
+    def refuse(*a, **k):
+        raise PermissionError("not allowed")
+    monkeypatch.setattr(db.os, "chmod", refuse)
+    with pytest.raises(PermissionError):
+        _record(db_path, name="left-pad")
+
+
+def test_quoted_password_is_masked_whole(tmp_path, monkeypatch):
+    import agent_install_monitor as plugin
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    plugin._on_post_tool_call(
+        tool_name="terminal",
+        args={"command": 'pip install --index-url https://u:p@x.example/simple rich --password "two words"'},
+        result='{"exit_code": 0}', session_id="s1",
+    )
+    events = db.events_for_session("s1", db_path=tmp_path / "agent-monitor" / "monitor.db")
+    assert events and all("two" not in e.command and "words" not in e.command for e in events)
+    assert all("u:p" not in e.command for e in events)

@@ -10,7 +10,8 @@ from __future__ import annotations
 import re
 
 # https://user:token@host/... -> https://***@host/...
-_URL_CREDENTIALS = re.compile(r"(?i)\b([a-z][a-z0-9+.\-]*://)[^/\s@]+@")
+# Up to the last @ before the path, so a password containing @ is masked whole.
+_URL_CREDENTIALS = re.compile(r"(?i)\b([a-z][a-z0-9+.\-]*://)[^/\s]*@")
 
 # GITHUB_TOKEN=abc npm install ..., export NPM_AUTH=abc
 _SECRET_NAME = r"[A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|PASS|AUTH|API_?KEY|ACCESS_?KEY|CREDENTIALS?)[A-Za-z0-9_]*"

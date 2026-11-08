@@ -35,3 +35,14 @@ def test_ordinary_commands_are_unchanged():
 def test_none_and_empty():
     assert redact(None) is None
     assert redact("") == ""
+
+
+def test_password_with_at_sign_is_masked_whole():
+    out = redact("pip install --index-url https://me:p@ss@w0rd@pypi.example.com/simple pkg")
+    assert "p@ss" not in out and "w0rd" not in out
+    assert "https://***@pypi.example.com/simple" in out
+
+
+def test_scoped_npm_package_url_is_unchanged():
+    cmd = "npm install https://registry.npmjs.org/@scope/pkg/-/pkg-1.0.0.tgz"
+    assert redact(cmd) == cmd

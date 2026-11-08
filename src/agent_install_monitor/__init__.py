@@ -50,7 +50,10 @@ def _on_post_tool_call(
         return
 
     try:
-        events = detect(command)
+        # Mask tokens in the original text, before detection splits it into
+        # words and drops the quotes (`--password "two words"` would then only
+        # lose its first word).
+        events = detect(redact(command))
         if not events:
             return
 
@@ -66,7 +69,7 @@ def _on_post_tool_call(
                 manager=event.manager,
                 action=event.action,
                 name=redact(event.name),
-                version=event.version,
+                version=redact(event.version),
                 command=redact(event.command),
                 cwd=cwd if isinstance(cwd, str) else None,
                 exit_code=exit_code,

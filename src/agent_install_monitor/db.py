@@ -101,17 +101,28 @@ def _ensure_private(path: Path) -> None:
     file 600, including for databases made by older versions. Windows keeps
     its own per-user permissions on the profile folder.
     """
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    folder = path.parent
+    created = not folder.exists()
+    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     if os.name == "nt":
         return
     if not path.exists():
         os.close(os.open(str(path), os.O_CREAT | os.O_WRONLY, 0o600))
-    for target, mode in ((path.parent, 0o700), (path, 0o600)):
+    # Only lock the folder if it's ours: one we just made, or the plugin's
+    # own agent-monitor folder. A database placed in a shared folder leaves
+    # that folder alone.
+    targets = [(path, 0o600)]
+    if created or folder.name == "agent-monitor":
+        targets.append((folder, 0o700))
+    for target, mode in targets:
         try:
             if target.stat().st_mode & 0o777 != mode:
                 os.chmod(str(target), mode)
         except OSError:
-            pass
+            # Fine if it's already private (say, owned by another account
+            # but not open to others). Stop if it's still open to others.
+            if target == path and path.stat().st_mode & 0o077:
+                raise
 
 
 @contextmanager

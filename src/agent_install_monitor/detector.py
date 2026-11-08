@@ -301,16 +301,27 @@ _CATEGORY_MATCHERS: List[Callable[[List[str], str], Optional[List[DetectedEvent]
 _ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 
+# Options of each wrapper that take a value as the next word.
+_WRAPPER_VALUE_OPTS = {
+    "sudo": {"-u", "-g", "-C", "-h", "-p", "-r", "-t", "-U", "-D"},
+    "env": {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"},
+}
+
+
 def _strip_prefix(tokens: List[str]) -> List[str]:
-    """Drop leading ``NAME=value`` settings and ``env``/``sudo`` wrappers."""
+    """Drop leading ``NAME=value`` settings and ``env``/``sudo`` wrappers,
+    with their options: ``sudo -E -u deploy``, ``env -u PIP_INDEX_URL``."""
     i = 0
+    wrapper = None  # the wrapper whose options we're reading
     while i < len(tokens):
         tok = tokens[i]
-        if _ENV_ASSIGN_RE.match(tok) or tok in ("env", "sudo"):
+        if tok in _WRAPPER_VALUE_OPTS:
+            wrapper = tok
             i += 1
-        elif "sudo" in tokens[:i] and tok.startswith("-"):
-            # sudo -E, sudo -H; -u and -g take a value (sudo -u deploy ...)
-            i += 2 if tok in ("-u", "-g") else 1
+        elif _ENV_ASSIGN_RE.match(tok):
+            i += 1
+        elif wrapper and tok.startswith("-"):
+            i += 2 if tok in _WRAPPER_VALUE_OPTS[wrapper] else 1
         else:
             break
     return tokens[i:]

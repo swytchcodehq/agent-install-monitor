@@ -216,3 +216,8 @@ def test_sudo_and_env_are_skipped():
 
 def test_plain_settings_alone_are_not_installs():
     assert detect("FOO=1 BAR=2") == []
+
+
+def test_env_options_with_values_are_skipped():
+    assert [(e.manager, e.name) for e in detect("env -u PIP_INDEX_URL pip install rich")] == [("pip", "rich")]
+    assert [(e.manager, e.name) for e in detect("sudo env -i PATH=/usr/bin apt install curl")] == [("apt", "curl")]
